@@ -15,11 +15,11 @@
 
 	// Define external resources (eg, not sourced locally,from content delivery networks, etc)
 	, paths: {
-		  jquery:   'empty:'
-		, jqueryui: 'empty:'
-		, lodash:   'empty:'
-		, moment:   'empty:'
-		, cookies:  'empty:'
-		, json:     'empty:'
+		  jquery:      'empty:'
+		, 'jquery-ui': 'empty:'
+		, lodash:      'empty:'
+		, moment:      'empty:'
+		, cookies:     'empty:'
+		, json:        'empty:'
 	}
 })
