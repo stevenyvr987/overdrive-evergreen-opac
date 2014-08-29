@@ -5,7 +5,8 @@ define [
 	'cookies'
 	'moment'
 	'od_config'
-], ($, _, json, C, M, config) ->
+	'od_session'
+], ($, _, json, C, M, config, Session) ->
 
 	# Dump the given arguments or log them to console
 	log = ->
@@ -49,105 +50,17 @@ define [
 	]
 	eventObject = $({}).on eventList.join(' '), (e, x, y...) -> log e.namespace, x, y
 
-	# We require the service of a session object to store essentials bits of
-	# information during a login session and between page reloads.  Here, we
-	# define the default version of the session, which will be used if no
-	# session is active.
-	default_session =
-
-		prefs: {}
-
-		credentials: {}
-
-		# An essential role of the session object is to store the response
-		# parameters that are provided as a result of authenticating the client
-		# or the patron.  Two components, the token type and the token, are
-		# computed into an Authorization header so that they can be easily
-		# submitted to an ajax call.
-		token: {}
-			#parameters: ''
-			#headers: Authorization: ''
-
-		# Another role is to store the endpoints of the various APIs.  These
-		# include the endpoints for authenticating the client or the patron and
-		# the endpoints for getting library or patron information.  Upon
-		# authentication, other endpoints are dynamically accumulated within
-		# the session object.
-		links:
-			token: href:              '//oauth.overdrive.com/token'
-			libraries: href:            "//api.overdrive.com/v1/libraries/#{config.accountID}"
-			patrontoken: href: '//oauth-patron.overdrive.com/patrontoken'
-			patrons: href:       '//patron.api.overdrive.com/v1/patrons/me'
-			holds: href: ''
-			checkouts: href: ''
-			products: ''
-			advantageAccounts: ''
-			search: ''
-			availability: ''
-
-		# Another role is to preserve the mapping between format id and format
-		# name that will be provided by the Library Account API.
-		labels: {}
-
+	# On page load, we unserialize the text string found in local storage into
+	# an object, or if there is no string yet, we create the default object.
 	# The session object uses a local storage mechanism based on window.name;
 	# see
 	# http://stackoverflow.com/questions/2035075/using-window-name-as-a-local-data-cache-in-web-browsers
 	# for pros and cons and alternatives.
-	#
-	# On page load, we unserialize the text string found in local storage into
-	# an object, or if there is no string yet, we create the default object.
-	session =
-		try
-			json.parse window.name
-		catch
-			default_session
+	session = new Session window.name, Boolean C('eg_loggedin') or window.IAMXUL
 
-	# On window unload, we timestamp the current session object and serialize it
-	# into local storage so that it survives page reloads.
-	$(window).on 'unload', ->
-		session.now = M().toISOString()
-		window.name = json.stringify session
-
-	# Use a cheap, nasty way to enforce a sanity constraint: session link templates should have empty
-	# values unless the current session is logged in.
-	$.extend session.links, { search: '', availability: '' } unless Boolean C('eg_loggedin') or window.IAMXUL
-
-	# Return a new object from given an object that has a 'key' property and a
-	# 'value' property
-	to_object = (from, key, value) ->
-		to = {}
-		to[x[key]] = x[value] for x in from
-		return to
-
-	# Update library or patron account information for the session
-	update_session_cache = (x) ->
-
-		# Cache any links
-		$.extend session.links, x.links if x.links
-
-		# Cache any linkTemplates; these are sourced only via the Patron Information API
-		$.extend session.links, x.linkTemplates if x.linkTemplates
-
-		#$.extend session, x
-
-		# Cache any mapping between format names and format IDs
-		$.extend session.labels, to_object x.formats, 'id', 'name' if x.formats
-
-		return x
-
-	# Revert the session cache to its default version
-	expire_session_cache = ->
-		$.extend session, default_session
-
-	# Define a function to check if the session object contains a patron access
-	# token.  It is enough to test if the parameters.scope text string mentions
-	# the word 'patron'.
-	#is_patron_access_token = -> /patron/i.test session.token.parameters?.scope
-	is_patron_access_token = -> /patron/i.test session.token?.scope
-
-	# Calculate a string encompassing the token type and access token of a
-	# given response object to an Overdrive login request
-	token_header = (x) -> Authorization: "#{x.token_type} #{x.access_token}"
+	# On window unload, we serialize it into local storage so that it survives
+	# page reloads.
+	$(window).on 'unload', -> window.name = session.store()
 
 	# Customize the plain jQuery ajax to post a request for an access token
 	_api = (url, data) ->
@@ -233,19 +146,14 @@ define [
 
 			# Notification that there are possible changes of values from
 			# preferences page that should be updated in the session cache
-			'od.prefs': (ev, x) -> $.extend session.prefs, x
+			'od.prefs': (ev, x) -> session.prefs.update x
 
 			# Expire patron access token if user is no longer logged into EG
 			'od.logout': (ev, x) ->
 				if x is 'eg'
-					expire_session_cache if is_patron_access_token()
+					session = new Session() if session.token.is_patron_access()
 
 		log: log
-
-		# It's necessary to expose the session cache to other modules because
-		# they may need to access certain stored values, in particular, the
-		# place hold page needs to get access to the email address
-		session: session
 
 		proxy: proxy
 
@@ -270,7 +178,7 @@ define [
 
 			$.ajax $.extend {},
 				# The current Authorization string is always added to the HTTP header.
-				headers: session.token.headers
+				headers: Authorization: "#{session.token.token_type} #{session.token.access_token}"
 				# The URL endpoint is converted to its reverse proxy version, because
 				# we are using the Evergreen server as a reverse proxy to the Overdrive
 				# server.
@@ -320,11 +228,9 @@ define [
 		apiDiscAccess: ->
 
 			ok = (x) ->
-				# Cache the server's response object as a general reference point
-				#session.token.parameters = x
-				session.token = x
-				# Cache the access token so that it can be used in future api calls
-				session.token.headers = token_header x
+				# Cache the server's response object and publish it to other
+				# modules
+				session.token.update x
 				od.$.triggerHandler 'od.clientaccess', x
 
 			_api session.links.token.href, grant_type: 'client_credentials'
@@ -349,7 +255,8 @@ define [
 			get = -> od.api session.links.libraries.href
 
 			ok = (x) ->
-				update_session_cache x
+				session.links.update x
+				session.labels.update x
 				od.$.triggerHandler 'od.libraryaccount', x
 				return
 
@@ -358,7 +265,7 @@ define [
 				# Retry if we got a 401 error code
 				if jqXHR.status is 401
 
-					if is_patron_access_token()
+					if session.token.is_patron_access()
 						# Current OD patron access token may have expired
 						od.$.triggerHandler 'od.logout', 'od'
 
@@ -390,19 +297,17 @@ define [
 		login: (credentials) ->
 
 			# Temporarily store the username and password from the login form
-			# into the session cache, and invalidate the session cache so that
+			# into the session cache, and invalidate the session token so that
 			# the final part of login sequence can complete.
 			if credentials
-				$.extend session.credentials, credentials
-				#delete session.token.parameters
-				session.token = {}
+				session.creds.update credentials
+				session.token.update()
 				od.$.triggerHandler 'od.login'
 				return
 
-			# Return a promise to a resolved deferredment if session cache is still valid
+			# Return a promise to a resolved deferredment if session token is still valid
 			# TODO is true if in staff client but shouldn't be
-			#if session.token.parameters
-			if is_patron_access_token()
+			if session.token.is_patron_access()
 				return $.Deferred().resolve().promise()
 
 			# Request OD service for a patron access token using credentials
@@ -417,23 +322,22 @@ define [
 
 				# Retrieve values from preferences page and save them in the
 				# session cache for later reference
-				$.extend( session.prefs,
+				session.prefs.update
 					barcode:       x 'barcode'
 					email_address: x 'email address'
 					home_library:  x 'home library'
-				)
 
 				# Use barcode as username or the username that was stored in
 				# session cache (in the hope that is a barcode) or give up with
 				# a null string
-				un = session.prefs.barcode or session.credentials?.username or ''
+				un = session.prefs.barcode or session.creds.un()
 
 				# Use the password that was stored in session cache or a dummy value
-				pw = if config.password_required is 'false' then 'xxxx' else session.credentials?.password or 'xxxx'
+				pw = session.creds.pw config.password_required
 
 				# Remove the stored credentials from cache as soon as they are
 				# no longer needed
-				session.credentials = {}
+				session.creds.update()
 
 				# Determine the Open Auth scope by mapping the long name of EG
 				# home library to OD authorization name
@@ -449,9 +353,7 @@ define [
 
 			# Complete login sequence if the session cache is invalid
 			ok = (x) ->
-				#session.token.parameters = x
-				session.token = x
-				session.token.headers = token_header x
+				session.token.update x
 				od.$.triggerHandler 'od.patronaccess', x
 
 			# Get patron preferences page
@@ -512,7 +414,7 @@ define [
 					_.where(y.actions.hold.fields, name: 'reserveId')[0].value = y.id
 					# We jam the email address from the prefs page into the fields object from the server
 					# so that the new form will display it.
-					if email_address = od.session.prefs.email_address
+					if email_address = session.prefs.email_address
 						_.where(y.actions.hold.fields, name: 'emailAddress')[0].value = email_address
 
 				od.$.triggerHandler 'od.availability', y
@@ -522,7 +424,7 @@ define [
 
 		apiPatronInfo: ->
 			ok = (x) ->
-				update_session_cache x
+				session.links.update x
 				od.$.triggerHandler 'od.patroninfo', x
 				return
 
@@ -530,7 +432,7 @@ define [
 			.then ok, logError
 
 		apiHoldsGet: (x) ->
-			return unless is_patron_access_token()
+			return unless session.token.is_patron_access()
 
 			od.api "#{session.links.holds.href}#{if x?.productID then x.productID else ''}"
 
@@ -569,7 +471,7 @@ define [
 				arguments
 
 		apiCheckoutsGet: (x) ->
-			return unless is_patron_access_token()
+			return unless session.token.is_patron_access()
 
 			od.api "#{session.links.checkouts.href}#{if x?.reserveID then x.reserveID else ''}"
 
