@@ -218,7 +218,7 @@ define [
 					if id = url.match /\/holds\/(.+)$/
 						od.$.triggerHandler 'od.hold.delete', reserveId: id[1]
 					if id = url.match /\/checkouts\/(.+)$/
-						od.$.triggerHandler 'od.checkout.delete', reserveId: id[2]
+						od.$.triggerHandler 'od.checkout.delete', reserveId: id[1]
 
 			.fail ->
 				od.$.triggerHandler 'od.error', [url, arguments[0]]
