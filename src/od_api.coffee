@@ -6,7 +6,8 @@ define [
 	'moment'
 	'od_config'
 	'od_session'
-], ($, _, json, C, M, config, Session) ->
+	'od_data'
+], ($, _, json, C, M, config, Session, D) ->
 
 	# Dump the given arguments or log them to console
 	log = ->
@@ -27,7 +28,7 @@ define [
 	# whenever result data becomes available after making an API request.
 	eventList = [
 		'od.clientaccess'
-		'od.libraryaccount'
+		'od.libraryinfo'
 		'od.metadata'
 		'od.availability'
 
@@ -123,18 +124,6 @@ define [
 				when 'a' then @serializeArray()
 				else @
 
-	# Mutate an ISO 8601 date string into a Moment object.  If the argument is
-	# just a date value, then it specifies an absolute date in ISO 8601 format.
-	# If the argument is a pair, then it specifies a date relative to now.  For
-	# an ISO 8601 date, we correct for what seems to be an error in time zone,
-	# Zulu time is really East Coast time.
-	momentize = (date, unit) ->
-		switch arguments.length
-			when 1
-				if date then M(date.replace /Z$/, '-0400') else M()
-			when 2
-				if date then M().add date, unit else M()
-			else M()
 
 	# We define the public interface of the module
 	# TODO wrap od in jquery so that we can use it to trigger events and bind event handlers
@@ -198,40 +187,35 @@ define [
 				# API URL.
 				if method is 'post'
 					if /\/holds|\/suspension/.test url
-						x = arguments[0]
-						x.holdPlacedDate = momentize x.holdPlacedDate
-						x.holdExpires = momentize x.holdExpires
-						if x.holdSuspension
-							x.holdSuspension.numberOfDays = momentize x.holdSuspension.numberOfDays, 'days'
+						x = new D.Holds holds: [ arguments[0] ]
 						od.$.triggerHandler 'od.hold.update', x
 					if /\/checkouts/.test url
-						x = arguments[0]
-						x.expires = momentize x.expires
+						x = new D.Checkouts checkouts: [ arguments[0] ]
 						od.$.triggerHandler 'od.checkout.update', x
 
 				# For a delete method, we do not get a data object in reply,
-				# thus we pattern match for the specific ID and trigger an
+				# thus we pattern match for the specific ID, and trigger an
 				# event with the ID.
 				if method is 'delete'
 					if id = url.match /\/holds\/(.+)\/suspension$/
 						return # no relevant event
 					if id = url.match /\/holds\/(.+)$/
-						od.$.triggerHandler 'od.hold.delete', reserveId: id[1]
+						od.$.triggerHandler 'od.hold.delete', id[1]
 					if id = url.match /\/checkouts\/(.+)$/
-						od.$.triggerHandler 'od.checkout.delete', reserveId: id[1]
+						od.$.triggerHandler 'od.checkout.delete', id[1]
 
 			.fail ->
 				od.$.triggerHandler 'od.error', [url, arguments[0]]
 				#$('<div>')._notify arguments[1].statusText, arguments[0].responseText
 
-		# Get a library access token so that we can use the Discovery API
+		# Get a library access token so that we can use the Discovery API.
+		# The token is cached and also published to other modules.
 		apiDiscAccess: ->
 
 			ok = (x) ->
-				# Cache the server's response object and publish it to other
-				# modules
 				session.token.update x
 				od.$.triggerHandler 'od.clientaccess', x
+				return x
 
 			_api session.links.token.href, grant_type: 'client_credentials'
 
@@ -250,15 +234,15 @@ define [
 		# relogin. In effect, we would only proceed with a retry to get a
 		# library access token, but if the user has logged in, we would not.
 		#
-		apiAccount: ->
+		apiLibraryInfo: ->
 
 			get = -> od.api session.links.libraries.href
 
 			ok = (x) ->
 				session.links.update x
 				session.labels.update x
-				od.$.triggerHandler 'od.libraryaccount', x
-				return
+				od.$.triggerHandler 'od.libraryinfo', x
+				return x
 
 			retry = (jqXHR) ->
 
@@ -355,6 +339,7 @@ define [
 			ok = (x) ->
 				session.token.update x
 				od.$.triggerHandler 'od.patronaccess', x
+				return x
 
 			# Get patron preferences page
 			$.get '/eg/opac/myopac/prefs'
@@ -371,21 +356,13 @@ define [
 			return unless x
 			od.api session.links.products.href, get, x
 
-		# TODO we can probably get away with using one normalization routine
-		# instead of using one for each type of data object, because they don't
-		# share property names.
-
 		apiMetadata: (x) ->
 			return unless x.id
+
 			od.api "#{session.links.products.href}/#{x.id}/metadata"
 
 			.then (y) ->
-				# Convert ID to upper case to match same case found in EG catalogue
-				y.id = y.id.toUpperCase()
-				# Provide a simplified notion of author: first name in creators
-				# list having a role of author
-				y.author = (v.name for v in y.creators when v.role is 'Author')[0] or ''
-				# Publish the metadata object
+				y = new D.Metadata y
 				od.$.triggerHandler 'od.metadata', y
 				y
 
@@ -402,142 +379,55 @@ define [
 
 			od.api url
 
-			# Post-process the result, eg, fill in empty properties
 			.then (y) ->
-				# Normalize the result by adding zero values
-				y.copiesOwned     = 0 unless y.copiesOwned
-				y.copiesAvailable = 0 unless y.copiesAvailable
-				y.numberOfHolds   = 0 unless y.numberOfHolds
-
-				if y.actions?.hold
-					# The reserve ID is empty in the actions.hold.fields; we have to fill it ourselves.
-					_.where(y.actions.hold.fields, name: 'reserveId')[0].value = y.id
-					# We jam the email address from the prefs page into the fields object from the server
-					# so that the new form will display it.
-					if email_address = session.prefs.email_address
-						_.where(y.actions.hold.fields, name: 'emailAddress')[0].value = email_address
-
+				y = new D.Availability y, session.prefs.email_address
 				od.$.triggerHandler 'od.availability', y
-				arguments
+				return y
 
 			.fail -> od.$.triggerHandler 'od.availability', x
 
 		apiPatronInfo: ->
+
 			ok = (x) ->
 				session.links.update x
 				od.$.triggerHandler 'od.patroninfo', x
-				return
+				return x
 
 			od.api session.links.patrons.href
 			.then ok, logError
 
+		# Get a specific hold or all holds
 		apiHoldsGet: (x) ->
 			return unless session.token.is_patron_access()
 
 			od.api "#{session.links.holds.href}#{if x?.productID then x.productID else ''}"
 
-			# Post-process the result, eg, fill in empty properties, sort list,
-			# remove redundant actions or add missing actions
 			.then (y) ->
-
-				# Normalize the result by adding an empty holds list
-				xs = y.holds or []
-
-				# For each hold, convert any ISO 8601 date strings into a
-				# Moment object (at the local time zone)
-				for x in xs
-					x.holdPlacedDate = momentize x.holdPlacedDate
-					x.holdExpires = momentize x.holdExpires
-					if x.holdSuspension
-						x.holdSuspension.numberOfDays = momentize x.holdSuspension.numberOfDays, 'days'
-
-				# Count the number of holds that can be checked out now
-				y.ready = _.countBy xs, (x) -> if x.actions.checkout then 'forCheckout' else 'other'
-				y.ready.forCheckout = 0 unless y.ready.forCheckout
-
-				# Delete action to release a suspension if a hold is not
-				# suspended, because such actions are redundant
-				delete x.actions.releaseSuspension for x in xs when not x.holdSuspension
-
-				# Sort the holds list by position and placed date
-				# and sort ready holds first
-				#y.holds = _.sortBy xs, ['holdListPosition', 'holdPlacedDate']
-				y.holds = _(xs)
-					.sortBy ['holdListPosition', 'holdPlacedDate']
-					.sortBy (x) -> x.actions.checkout
-					.value()
-
+				y = new D.Holds y
 				od.$.triggerHandler 'od.holds', y
-				arguments
+				return y
 
+		# Get a specific checkout or all checkouts
 		apiCheckoutsGet: (x) ->
 			return unless session.token.is_patron_access()
 
 			od.api "#{session.links.checkouts.href}#{if x?.reserveID then x.reserveID else ''}"
 
-			# Post-process the result, eg, fill in empty properties, sort list,
-			# remove redundant actions or add missing actions
 			.then (y) ->
-
-				# Normalize the result by adding an empty checkouts list
-				xs = y.checkouts or []
-
-				# Convert any ISO 8601 date strings into a Moment object (at
-				# the local time zone)
-				for x in xs
-					x.expires = momentize x.expires
-
-				# Sort the checkout list by expiration date
-				y.checkouts = _.sortBy xs, 'expires'
-
+				y = new D.Checkouts y
 				od.$.triggerHandler 'od.checkouts', y
-				arguments
+				return y
 
-		# Get a list of user's 'interests', ie, holds and checkouts
+		# Consolidate the holds and checkouts lists into an object that
+		# represents the 'interests' of the patron
 		apiInterestsGet: ->
 			$.when(
 				od.apiHoldsGet()
 				od.apiCheckoutsGet()
 			)
-
-			# Consolidate the holds and checkouts information into an object
-			# that represents the 'interests' of the patron
 			.then (h, c) ->
-
-				# A useful condition to handle if the API calls could not
-				# be fulfilled because they are not within the scope of the
-				# current access token 
-				# TODO possibly redundant or unnecessary
-				###
-				unless h and c
-					page {}, {}
-					return
-				###
-
-				h = h[0]
-				c = c[0]
-
-				interests =
-					nHolds: h.totalItems
-					nHoldsReady: h.ready.forCheckout
-					nCheckouts: c.totalItems
-					nCheckoutsReady: c.totalCheckouts
-					ofHolds: h.holds
-					ofCheckouts: c.checkouts
-					# The following property is a map from product ID to a hold or
-					# a checkout object, eg, interests.byID(124)
-					byID: do (hs = h.holds, cs = c.checkouts) ->
-						byID = {}
-						for v, n in hs
-							v.type = 'hold'
-							byID[v.reserveId] = v
-						for v, n in cs
-							v.type = 'checkout'
-							byID[v.reserveId] = v
-						return byID
-
-				# Publish patron's interests to all areas of the screen
-				od.$.triggerHandler 'od.interests', interests
-				return interests
+				y = new D.Interests h, c
+				od.$.triggerHandler 'od.interests', y
+				return y
 
 	return od

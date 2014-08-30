@@ -350,8 +350,11 @@ require [
 				# Add availability values to a hold
 				'od.availability': (ev, x) -> $("##{x.id}")._holds_row_avail x
 
-				'od.hold.update': (ev, x) -> $("##{x.reserveId}")._holds_row x
-				'od.hold.delete': (ev, x) -> $("##{x.reserveId}").remove()
+				'od.hold.update': (ev, x) ->
+					x = x.holds[0]
+					$("##{x.reserveId}")._holds_row x
+
+				'od.hold.delete': (ev, id) -> $("##{id}").remove()
 
 		'myopac\/circs': ->
 
@@ -390,8 +393,11 @@ require [
 				# Add metadata values to a checkout
 				'od.metadata': (ev, x) -> $("##{x.id}")._row_meta x, 'thumbnail', 'title', 'author'
 
-				'od.checkout.update': (ev, x) -> $("##{x.reserveId}")._row_checkout x
-				'od.checkout.delete': (ev, x) -> $("##{x.reserveId}").remove()
+				'od.checkout.update': (ev, x) ->
+					x = x.checkouts[0]
+					$("##{x.reserveId}")._row_checkout x
+
+				'od.checkout.delete': (ev, id) -> $("##{id}").remove()
 
 	# Begin sequence after the DOM is ready...
 	$ ->
@@ -407,7 +413,7 @@ require [
 		return if _.every routes.handle() , (r) -> r is undefined
 
 		# Try to get library account info
-		od.apiAccount()
+		od.apiLibraryInfo()
 
 		# If we are logged in, we 'compute' the patron's interests in product
 		# IDs; otherwise, we set patron interests to an empty object.
