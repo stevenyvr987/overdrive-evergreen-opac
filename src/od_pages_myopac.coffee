@@ -333,6 +333,7 @@ define [
 				<li>Hold will expire <%= expires %></li>
 				</ul>
 			</div>
+			<a href="http://downloads.bclibrary.ca/ContentDetails.htm?ID=<%= id %>">Click to access online (library card required)</a>
 			"""
 			@empty().append tpl
 				position:  hold.holdListPosition
@@ -341,6 +342,7 @@ define [
 				expires:   hold.holdExpires.fromNow()
 				placed:    hold.holdPlacedDate.fromNow()
 				activates: hold.holdSuspension?.numberOfDays.calendar()
+				id:        hold.reserveId
 
 			# Illuminate areas of this row according to the hold status
 			._show_from hold_status, '.suspended', '.available', '.unavailable'
@@ -446,10 +448,12 @@ define [
 			tpl = _.template """
 			<div>Expires <%= expires_relatively %></div>
 			<div><%= expires_exactly %></div>
+			<a href="http://downloads.bclibrary.ca/ContentDetails.htm?ID=<%= id %>">Click to access online (library card required)</a>
 			"""
 			@empty().append tpl
 				expires_relatively: circ.expires.fromNow()
 				expires_exactly:    circ.expires.format 'YYYY MMM D, h:mm:ss a'
+				id:                 circ.reserveId
 
 		# Build a <tr> element to show the available actions of an item.
 		# If the item is available, the check out action should be possible,
