@@ -293,7 +293,7 @@ define [
 
 			tpl = _.template """
 			<div>
-				<a href="<%= href %>" class="opac-button" style="margin-top: 0px; margin-bottom: 0px"><%= label %></a>
+				<a href="<%= href %>" class="opac-button <%= action_name %>" style="margin-top: 0px; margin-bottom: 0px"><%= label %></a>
 			</div>
 			"""
 
@@ -306,7 +306,7 @@ define [
 				$.extend action, _of: $tr, _name: n
 
 				# Create a button for this action
-				$ tpl href: action.href, label: Labels?[n] or n
+				$ tpl href: action.href, action_name: n, label: Labels?[n] or n
 
 				# On clicking the button, build a new dialog using the extended action object
 				.on 'click', action, (ev) ->

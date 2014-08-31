@@ -277,7 +277,7 @@ require [
 				._holdings_row id # Add an empty row
 				.appendTo $('#myopac_holds_div, #myopac_checked_div')
 
-			# Fill in metadata values when they become available
+			# Fill in empty row when data becomes available
 			od.$.on
 
 				'od.interests': (ev, x) ->
@@ -287,6 +287,7 @@ require [
 					interested = x.byID
 
 				'od.metadata': (ev, x) ->
+					# Fill in metadata columns
 					$("##{x.id}")._row_meta x, 'thumbnail', 'title', 'author', 'formats'
 
 				'od.availability': (ev, x) ->
@@ -299,8 +300,15 @@ require [
 					# a hold.
 					if interested[x.id]?.type
 						window.history.go -2
+
 					else
-						$("##{x.id}")._holdings_row_avail x
+						$("##{x.id}")
+						# Fill in availability column
+						._holdings_row_avail x
+						# Auto-focus on place hold or checkout button
+						.find '.opac-button.hold, .opac-button.checkout'
+							.focus()
+							.end()
 
 		'myopac\/holds': ->
 
