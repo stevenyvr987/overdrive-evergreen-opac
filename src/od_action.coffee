@@ -107,11 +107,8 @@ define [
 
 			# Make an API call
 			action = @options._action
-			od.api action.href, action.method, fields: $('form', @element).serializeArray()
-
-			# TODO progress message is not showing
-			# seems like the progress callback is never called
-			.progress => @set_message 'progress', true
+			progress = => @set_message 'progress', true
+			od.api action.href, action.method, fields: $('form', @element).serializeArray(), progress
 
 			# Re-use the dialog to show notifications with a close button
 			.then(

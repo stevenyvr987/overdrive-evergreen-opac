@@ -151,7 +151,7 @@ define [
 
 		# Customize the plain jQuery ajax method to handle a GET or POST method
 		# for the Overdrive api.
-		api: (url, method, data) ->
+		api: (url, method, data, beforeSend) ->
 
 			#  Do some pre-processing of data before it is sent to server
 			if method is 'post'
@@ -177,6 +177,7 @@ define [
 				# A given data object is expected to be in JSON format
 				contentType: 'application/json; charset=utf-8'
 				data: json.stringify data
+				beforeSend: beforeSend
 
 			.done ->
 
