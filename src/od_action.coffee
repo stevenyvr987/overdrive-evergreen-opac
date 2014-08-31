@@ -83,15 +83,17 @@ define [
 
 		# Depending on the given scenario, the title and body of the dialog
 		# screen may be set, and the close button may be shown or hidden.
-		# The title is a text string specified as the title property of the
-		# scenario, or it defaults to the etitle of the attched action object.
-		# The body is a text string specified as an argument or it defaults to
-		# the body property of the scenario.
-		set_message: (scenario, close, details) ->
-			s = @options._scenario[scenario]
-			@element.empty().append details or s.body
-			@option 'title', s.title or @options._action._of._etitle()
+		set_message: (scenario, close, body, title) ->
 			@_close_button close
+			# Get the scenario properties
+			s = @options._scenario[scenario]
+			# The body is a text string specified as an argument or as the
+			# scenario's body property, or it defaults to a progress bar.
+			@element.empty().append body or s?.body or $('<div>').progressbar value: false
+			# The title is a text string specified as an argument or as the
+			# scenario's title property, or it defaults to the etitle of the
+			# attached action object.
+			@option 'title', title or s?.title or @options._action._of._etitle()
 			return @
 
 		non_action: ->
@@ -173,7 +175,6 @@ define [
 					body: 'Hold was successfully placed. Close this box to be redirected to your holds list.'
 					reroute: -> window.location.replace '/eg/opac/myopac/holds?e_items'
 				fail: body: 'Hold was not placed. There may have been a network or server problem. Please try again.'
-				progress: body: 'Hold is being placed...'
 
 			@dialogAction _scenario: scenario, _action: action
 
@@ -184,7 +185,6 @@ define [
 				intent: body: 'Are you sure you want to cancel this hold?'
 				done: body: 'Hold was successfully cancelled.'
 				fail: body: 'Hold was not cancelled. There may have been a network or server problem. Please try again.'
-				progress: body: 'Hold is being cancelled...'
 
 			@dialogAction _scenario: scenario, _action: action
 
@@ -197,7 +197,6 @@ define [
 					buttons: [ 'Suspend', 'Cancel' ]
 				done: body: 'Hold was successfully suspended'
 				fail: body: 'Hold was not suspended. There may have been a network or server problem. Please try again.'
-				progress: body: 'Hold is being suspended...'
 
 			@dialogAction _scenario: scenario, _action: action
 
@@ -210,7 +209,6 @@ define [
 					body: 'Suspension was successfully released. The page will reload to update your account status.'
 					reroute: -> window.location.reload true
 				fail: body: 'Suspension was not released. There may have been a network or server problem. Please try again.'
-				progress: body: 'Suspension is being released...'
 
 			@dialogAction _scenario: scenario, _action: action
 
@@ -229,7 +227,6 @@ define [
 					body: 'Title was successfully checked out. Close this page to be redirected to your checkouts list.'
 					reroute: -> window.location.replace '/eg/opac/myopac/circs?e_items'
 				fail: body: 'Title was not checked out. There may have been a network or server problem. Please try again.'
-				progress: body: 'Title is being checked out...'
 
 			@dialogAction _scenario: scenario, _action: action
 
@@ -242,7 +239,6 @@ define [
 					buttons: [ 'Select format', 'Cancel' ]
 				done: body: 'Format was successfully selected.'
 				fail: body: 'Format was not selected. There may have been a network or server problem. Please try again.'
-				progress: body: 'Format is being selected...'
 
 			@dialogAction _scenario: scenario, _action: action
 
@@ -253,7 +249,6 @@ define [
 				intent: body: 'Are you sure you want to return this title before it expires?'
 				done: body: 'Title was successfully returned.'
 				fail: body: 'Title was not returned. There may have been a network or server problem. Please try again.'
-				progress: body: 'Title is being returned...'
 
 			@dialogAction _scenario: scenario, _action: action
 
