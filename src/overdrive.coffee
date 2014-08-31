@@ -109,7 +109,7 @@ require [
 				# token seems to have expired
 				'od.logout': (ev, x) ->
 					if x is 'od'
-						$('#logout_link').trigger 'click' if logged_in
+						window.location.replace '/eg/opac/logout' if logged_in
 
 		'opac\/myopac': ( this_page = page_name() ) ->
 
