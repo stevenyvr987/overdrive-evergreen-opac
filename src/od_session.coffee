@@ -28,6 +28,26 @@ define [
 				catch
 					undefined
 
+		# The URL endpoint is converted to its reverse proxy version,
+		# because we are using the Evergreen server as a reverse proxy to
+		# the Overdrive server.
+		proxy: (x) ->
+			return unless x
+			y = x
+			y = y.replace 'https://', '//'
+			y = y.replace 'http://' , '//'
+			y = y.replace '//oauth-patron.overdrive.com', '/od/oauth-patron'
+			y = y.replace        '//oauth.overdrive.com', '/od/oauth'
+			y = y.replace   '//patron.api.overdrive.com', '/od/api-patron'
+			y = y.replace          '//api.overdrive.com', '/od/api'
+			y = y.replace  '//images.contentreserve.com', '/od/images'
+			y = y.replace '//fulfill.contentreserve.com', '/od/fulfill'
+			#log "proxy #{x} -> #{y}"
+			y
+		proxies: (x) ->
+			(v.href = @proxy l) for n, v of x when l = v.href
+			return x
+
 	class Prefs extends U
 		@default:
 			barcode: ''
@@ -83,16 +103,15 @@ define [
 			advantageAccounts: ''
 			search: ''
 			availability: ''
+
 		constructor: (x, logged_in) ->
 			@update x
 			@calibrate logged_in if x
 			return
 		update: (x) ->
-			if x is undefined
-				super Links.default
-			else
-				super x.links if x.links
-				super x.linkTemplates if x.linkTemplates
+			super @proxies Links.default unless x?
+			super @proxies x.links if x?.links
+			super @proxies x.linkTemplates if x?.linkTemplates
 			return
 
 		# Link templates should have empty values unless the current session is

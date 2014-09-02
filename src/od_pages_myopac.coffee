@@ -4,11 +4,10 @@
 define [
 	'jquery'
 	'lodash'
-	'od_api'
 	'jquery-ui'
 	'od_action'
 	'od_pages_opac'
-], ($, _, od) ->
+], ($, _) ->
 
 	$.fn.extend
 
@@ -289,7 +288,7 @@ define [
 			<a href="/eg/opac/results?query=#{meta.title};locg=10;qtype=title">#{meta.title}</a>
 			"""
 			$thumbnail = $ """
-			<img src="#{od.proxy meta.images?.thumbnail?.href}" alt="#{meta.title}" />
+			<img src="#{meta.images?.thumbnail?.href}" alt="#{meta.title}" />
 			"""
 			$author = $ """
 			<a href="/eg/opac/results?query=#{meta.author};locg=10;qtype=author">#{meta.author}</a>

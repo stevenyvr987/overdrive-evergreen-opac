@@ -461,7 +461,7 @@ define [
 				.then(
 					(x) ->
 						window.open(
-							od.proxy x.links.contentlink.href # url
+							x.links.contentlink.href # url
 							'_blank' #'Overdrive Read format' # title
 							'resizable, scrollbars, status, menubar, toolbar, personalbar' # features
 						)

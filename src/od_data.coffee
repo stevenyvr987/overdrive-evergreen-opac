@@ -27,6 +27,26 @@ define [
 					if date then M().add date, unit else M()
 				else M()
 
+		# The URL endpoint is converted to its reverse proxy version,
+		# because we are using the Evergreen server as a reverse proxy to
+		# the Overdrive server.
+		proxy: (x) ->
+			return unless x
+			y = x
+			y = y.replace 'https://', '//'
+			y = y.replace 'http://' , '//'
+			y = y.replace '//oauth-patron.overdrive.com', '/od/oauth-patron'
+			y = y.replace        '//oauth.overdrive.com', '/od/oauth'
+			y = y.replace   '//patron.api.overdrive.com', '/od/api-patron'
+			y = y.replace          '//api.overdrive.com', '/od/api'
+			y = y.replace  '//images.contentreserve.com', '/od/images'
+			y = y.replace '//fulfill.contentreserve.com', '/od/fulfill'
+			#log "proxy #{x} -> #{y}"
+			y
+		proxies: (x) ->
+			(v.href = @proxy l) for n, v of x when l = v.href
+			return x
+
 
 	class Metadata extends U
 		constructor: (x) ->
@@ -37,6 +57,8 @@ define [
 			# Provide a simplified notion of author: first name in creators
 			# list having a role of author
 			@author = (v.name for v in @creators when v.role is 'Author')[0] or ''
+			# Convert image links to use reverse proxy
+			@proxies @images
 
 			return
 
@@ -73,6 +95,7 @@ define [
 
 			@add()
 			.remove()
+			.proxy_urls()
 			.moments()
 			.count()
 			.sort()
@@ -90,6 +113,10 @@ define [
 			delete x.actions.releaseSuspension for x in @holds when not x.holdSuspension
 			return @
 
+		proxy_urls: ->
+			(@proxies v.actions) for v, n in @holds
+			return @
+			
 		# For each hold, convert any ISO 8601 date strings into a
 		# Moment object (at local time zone)
 		moments: ->
@@ -121,6 +148,7 @@ define [
 			super x
 
 			@add()
+			.proxy_urls()
 			.moments()
 			.sort()
 
@@ -129,6 +157,10 @@ define [
 		# Ensure there is always a checkouts list, even if it's empty
 		add: ->
 			@checkouts = [] if @checkouts is undefined
+			return @
+
+		proxy_urls:->
+			(@proxies v.actions) for v, n in @checkouts
 			return @
 
 		# For each checkout, convert any ISO 8601 date strings into a

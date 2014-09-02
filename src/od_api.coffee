@@ -69,31 +69,11 @@ define [
 		$.ajax $.extend {},
 			# The Basic Authorization string is always added to the HTTP header.
 			headers: Authorization: "Basic #{config.credentials}"
-			# The URL endpoint is converted to its reverse proxy version,
-			# because we are using the Evergreen server as a reverse proxy to
-			# the Overdrive server.
-			url: proxy url
+			url: url
 			type: 'POST'
 			# We expect data to be always given; the ajax method will convert
 			# it to a query string.
 			data: data
-
-	# Replace the host domain of a given URL with a proxy domain.  If the input
-	# URL specifies a protocol, it is stripped out so that the output will
-	# default to the client's protocol.
-	proxy = (x) ->
-		return unless x
-		y = x
-		y = y.replace 'https://', '//'
-		y = y.replace 'http://' , '//'
-		y = y.replace '//oauth-patron.overdrive.com', '/od/oauth-patron'
-		y = y.replace        '//oauth.overdrive.com', '/od/oauth'
-		y = y.replace   '//patron.api.overdrive.com', '/od/api-patron'
-		y = y.replace          '//api.overdrive.com', '/od/api'
-		y = y.replace  '//images.contentreserve.com', '/od/images'
-		y = y.replace '//fulfill.contentreserve.com', '/od/fulfill'
-		#log "proxy #{x} -> #{y}"
-		y
 
 	# Convert a serialized array into a serialized object
 	serializeObject = (a) ->
@@ -144,8 +124,6 @@ define [
 
 		log: log
 
-		proxy: proxy
-
 		# Map format id to format name using current session object
 		labels: (id) -> session.labels[id] or id
 
@@ -168,10 +146,7 @@ define [
 			$.ajax $.extend {},
 				# The current Authorization string is always added to the HTTP header.
 				headers: Authorization: "#{session.token.token_type} #{session.token.access_token}"
-				# The URL endpoint is converted to its reverse proxy version, because
-				# we are using the Evergreen server as a reverse proxy to the Overdrive
-				# server.
-				url: proxy url
+				url: url
 				# Will default to 'get' if no method string is supplied
 				type: method
 				# A given data object is expected to be in JSON format
