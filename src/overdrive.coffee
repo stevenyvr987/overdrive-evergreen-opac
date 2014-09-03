@@ -64,15 +64,6 @@ require [
 		xs = window.location.pathname.match /eg\/opac\/(.+)/
 		if xs then xs[1].replace /\/\d+/, '' else ''
 
-	# Make a map from an item ID to a status indicating whether it is on the
-	# holds list or the checkout list
-	# eg, var status = ids(holds, checkouts)[id]
-	item_status = (holds, checkouts) ->
-		ids = {}
-		ids[v.reserveId] = 'hold' for v, n in holds
-		ids[v.reserveId] = 'checkout' for v, n in checkouts
-		return ids
-
 	# Routing table: map an URL pattern to a handler that will perform actions
 	# or modify areas on the screen.
 	routes =
