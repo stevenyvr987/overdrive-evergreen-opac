@@ -5,19 +5,19 @@ define [
 	'moment'
 ], (M) ->
 
+	# Default configuration of date formats for Moment object;
+	# see http://devdocs.io/moment/index#customization-long-date-formats
+	M.lang 'en', longDateFormat:
+        LT: "h:mm A"
+        L:            "MM/DD/YYYY"
+        LL:         "MMMM Do YYYY"
+        LLL:        "MMMM Do YYYY LT"
+        LLLL: "dddd, MMMM Do YYYY LT"
+
 	# Mapping between long name of home library and Overdrive authorization name
 	longname =
 		'long name one': 'name1'
 		'long name two': 'name2'
-
-	# Default configuration of date formats for Moment object;
-	# see http://devdocs.io/moment/index#customization-long-date-formats
-	M.lang 'en', longDateFormat:
-        LT: "h:mm A",
-        L: "MM/DD/YYYY",
-        LL: "MMMM Do YYYY",
-        LLL: "MMMM Do YYYY LT",
-        LLLL: "dddd, MMMM Do YYYY LT"
 
 	return {
 
