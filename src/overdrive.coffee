@@ -83,7 +83,7 @@ require [
 		# list of results for each handler that was executed. A result is
 		# undefined if no subscriptions to an OD service was needed.
 		handle: (p = window.location.pathname) ->
-			for n, v of routes when n isnt 'handle'
+			for own n, v of @ when n isnt 'handle'
 				v() if (new RegExp n).test p
 
 		'eg\/opac': ->
