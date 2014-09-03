@@ -27,10 +27,11 @@ require [
 	'lodash'
 	'cookies'
 	'od_api'
+	'od_config'
 	'od_pages_opac'
 	'od_pages_myopac'
 	'od_action'
-], ($, _, C, od) ->
+], ($, _, C, od, config) ->
 
 	# Indicate the logged in status; the value is determined within document
 	# ready handler.
@@ -402,6 +403,9 @@ require [
 	$ ->
 
 		return if window.IAMXUL # Comment out to run inside XUL staff client
+
+		# Do not implement if hostname is blacklisted
+		return if config.blacklisted()
 
 		# We are logged into EG if indicated by a cookie or if running
 		# inside XUL staff client.

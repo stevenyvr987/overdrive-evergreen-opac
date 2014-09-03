@@ -41,4 +41,11 @@ define [
 
 		# Define whether a user password is required to complete patron authentication
 		password_required: 'false' # or 'true'
+
+		# Define a blacklist based on hostname component, eg, abc.domain1 or xyz.domain2
+		blacklisted: ( hn = window.location.hostname, bl = ['abc', 'xyz'] ) ->
+			return unless hn = hn.match(/^(.+?)\./)?[1] # no proper hostname found
+			return unless bl?.length > 0 # no blacklist or is empty
+			return true for v in bl when v is hn # hostname is listed in blacklist
+			return # not listed in blacklist
 	}
