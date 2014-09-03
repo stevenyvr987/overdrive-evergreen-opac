@@ -48,7 +48,7 @@ require [
 	search_params = (p) ->
 		# Convert for example, '?a=1&b=2' to { a:1, b:2 }, 
 		o =
-			if xs = (decodeURI window.location.search)?.split('?')?[1]?.split('&')
+			if xs = (decodeURIComponent window.location.search)?.split('?')?[1]?.split(/&|;/)
 				_.zipObject( x.split('=') for x in xs )
 			else
 				{}
