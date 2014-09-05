@@ -273,7 +273,7 @@ define [
 				._holds_row_avail1 hold
 				.end()
 			.find 'td.actions'
-				._actions hold.actions
+				._actions hold.actions, hold.reserveId
 				.end()
 
 		# Show a title, author, or format by using the given metadata object
@@ -436,10 +436,10 @@ define [
 				._checkouts_row_avail circ
 				.end()
 			.find 'td.actions'
-				._actions circ.actions
+				._actions circ.actions, circ.reserveId
 				.end()
 			.find 'td.formats'
-				._formats circ.formats
+				._formats circ.formats, circ.reserveId
 				.end()
 
 		_checkouts_row_avail: (circ) ->
@@ -509,7 +509,7 @@ define [
 
 			# Build action buttons
 			.find 'td.actions'
-				._actions avail.actions
+				._actions avail.actions, avail.id
 				.end()
 
 			# Illuminate areas of this row according to the holdings status

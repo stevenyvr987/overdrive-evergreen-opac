@@ -289,7 +289,7 @@ define [
 
 		# Build action buttons and dialogs given specifications as follows.
 		# actions = [ { name: { href: h, method: m, fields: [ { name: n, value: v, options: [...] } ] } ]
-		_actions: (actions) ->
+		_actions: (actions, id) ->
 
 			tpl = _.template """
 			<div>
@@ -303,7 +303,7 @@ define [
 			$buttons = for n, action of actions
 
 				# Extend the action object with context
-				$.extend action, _of: $tr, _name: n
+				$.extend action, _of: $tr, _name: n, _id: id
 
 				# Create a button for this action
 				$ tpl href: action.href, action_name: n, label: Labels?[n] or n
