@@ -69,6 +69,7 @@ define [
 
 			@zero()
 			@hold email_address if @actions?.hold
+			@proxies @actions if @actions?
 
 			return @
 
