@@ -332,7 +332,7 @@ define [
 				<li>Hold will expire <%= expires %></li>
 				</ul>
 			</div>
-			<a href="http://downloads.bclibrary.ca/ContentDetails.htm?ID=<%= id %>">Click to access online (library card required)</a>
+			<a href="http://downloads.bclibrary.ca/ContentDetails.htm?ID=<%= id %>">Link to Overdrive Account to change preferences</a>
 			"""
 			@empty().append tpl
 				position:  hold.holdListPosition
