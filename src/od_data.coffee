@@ -70,6 +70,7 @@ define [
 			@zero()
 			@hold email_address if @actions?.hold
 			@proxies @actions if @actions?
+			@action_formats()
 
 			return @
 
@@ -87,6 +88,15 @@ define [
 			# so that the new form will display it.
 			if email_address
 				_.where(@actions.hold.fields, name: 'emailAddress')[0].value = email_address
+			return @
+
+		# Surface the format options list that might be buried in an actions object
+		action_formats: ->
+			xs = @actions?.checkout?.fields
+			return @ unless xs?.length > 0
+			break for x in xs when x.name is 'formatType'
+			return @ unless x.options.length > 0
+			@formats = ( { id: v, name: '' } for v in x.options )
 			return @
 
 

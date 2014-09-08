@@ -280,7 +280,7 @@ define [
 		_row_meta: (meta, classnames...) ->
 
 			status = if arguments.length is 0 then value: false else 'destroy'
-			@find(".#{n}").progressbar(status) for n in ['title', 'author', 'formats']
+			try @find(".#{n}").progressbar(status) for n in ['title', 'author', 'formats']
 
 			return @ unless meta
 
@@ -299,7 +299,7 @@ define [
 					when 'thumbnail' then $n.empty().append $thumbnail
 					when 'title'     then $n.empty().append $title
 					when 'author'    then $n.empty().append $author
-					when 'formats'   then $n._show_formats meta
+					when 'formats'   then $n._show_formats meta?.formats
 			return @
 
 		_holds_row_avail1: (hold) ->

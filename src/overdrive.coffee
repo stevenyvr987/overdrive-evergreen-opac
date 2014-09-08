@@ -192,8 +192,10 @@ require [
 
 					# Initiate request for each Overdrive product ID
 					for id in ids
-						od.apiMetadata id: id
 						od.apiAvailability id: id
+						# If the user isn't logged in, the format list will
+						# always be found from Metadata
+						od.apiMetadata id: id unless logged_in
 
 					# Cache the relationship between product IDs and patron
 					# holds and checkouts, ie, has the patron placed a hold on
@@ -209,6 +211,14 @@ require [
 						._results_avail x
 						._replace_place_hold_link x, interested[x.id]?.type
 
+					# Irregular logic warning: If the user is logged in, the
+					# format list might be found from Availability if the item
+					# is available for checkout, otherwise it will be found
+					# from Metadata.
+					if logged_in
+						if x.available then $("##{x.id}")._results_meta x else od.apiMetadata id: x.id
+
+
 		'opac\/record': (interested = {}) ->
 
 			# Add an empty container of format and availability values
@@ -220,7 +230,7 @@ require [
 				'od.interests': (ev, x) ->
 
 					# Initiate request for metadata and availability values when
-					od.apiMetadata id: id
+					od.apiMetadata id: id unless logged_in
 					od.apiAvailability id: id
 
 					# Has the user placed a hold on an ID or checked out an ID?
@@ -233,6 +243,9 @@ require [
 				'od.availability': (ev, x) ->
 					$("##{x.id}")._record_avail x
 					$('#rdetail_actions_div')._replace_place_hold_link x, interested[x.id]?.type
+
+					if logged_in
+						if x.available then $("##{x.id}")._record_meta x else od.apiMetadata id: x.id
 
 		# For the case where the patron is trying to place a hold if not logged
 		# in, there is a loophole in the Availability API; if using a patron
@@ -273,34 +286,37 @@ require [
 			od.$.on
 
 				'od.interests': (ev, x) ->
-					od.apiMetadata id: id
-					od.apiAvailability id: id
+
 					# Has the user placed a hold on an ID or checked out an ID?
 					interested = x.byID
 
-				'od.metadata': (ev, x) ->
-					# Fill in metadata columns
-					$("##{x.id}")._row_meta x, 'thumbnail', 'title', 'author', 'formats'
+					$.when(
+						od.apiMetadata id: id
+						od.apiAvailability id: id
+					)
+					.then (x, y) ->
 
-				'od.availability': (ev, x) ->
-					# Check if this patron has checked out or placed a hold on
-					# avail.id and if so, then go back two pages to the result list
-					# or record page. The page being skipped over is the login page
-					# that comes up because the user needs to log in before being
-					# able to see the place hold page.  Thus, the logic is only
-					# relevant if the user has not logged in before trying to place
-					# a hold.
-					if interested[x.id]?.type
-						window.history.go -2
+						# Check if this patron has checked out or placed a hold on
+						# avail.id and if so, then go back two pages to the result list
+						# or record page. The page being skipped over is the login page
+						# that comes up because the user needs to log in before being
+						# able to see the place hold page.  Thus, the logic is only
+						# relevant if the user has not logged in before trying to place
+						# a hold.
+						if interested[y.id]?.type
+							window.history.go -2
 
-					else
-						$("##{x.id}")
-						# Fill in availability column
-						._holdings_row_avail x
-						# Auto-focus on place hold or checkout button
-						.find '.opac-button.hold, .opac-button.checkout'
-							.focus()
-							.end()
+						else
+							$("##{x.id}")._row_meta(x, 'thumbnail', 'title', 'author')
+							$("##{x.id}")._row_meta (if y.available then y else x), 'formats'
+
+							$("##{y.id}")
+							# Fill in availability column
+							._holdings_row_avail y
+							# Auto-focus on place hold or checkout button
+							.find '.opac-button.hold, .opac-button.checkout'
+								.focus()
+								.end()
 
 		'myopac\/holds': ->
 

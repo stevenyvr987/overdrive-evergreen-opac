@@ -4,8 +4,13 @@
 define [
 	'jquery'
 	'lodash'
+	'od_api'
 	'jquery-ui'
-], ($, _) ->
+], (
+	$
+	_
+	od
+) ->
 
 	$.fn.extend
 
@@ -14,10 +19,10 @@ define [
 			return @ unless x
 
 			$x =
-				if x.formats
+				if x?.length > 0
 					$('<ul>')
 						.css 'padding-left', '20px'
-						.append _.map x.formats, (f) -> $('<li>').append f.name
+						.append _.map x, (f) -> $('<li>').append f.name or od.labels f.id or f.id
 				else
 					$('<span>')
 						.css 'color', 'red'
@@ -78,7 +83,7 @@ define [
 			status = if arguments.length is 0 then value: false else 'destroy'
 			@find('.result_holdings_table .formats')
 				.progressbar status
-				._show_formats meta
+				._show_formats meta?.formats
 				.end()
 
 		_results_avail: (avail) ->
@@ -138,7 +143,7 @@ define [
 			status = if arguments.length is 0 then value: false else 'destroy'
 			@find '.formats'
 				.progressbar status
-				._show_formats meta
+				._show_formats meta?.formats
 				.end()
 
 		_record_avail: (avail) ->
