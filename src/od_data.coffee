@@ -170,8 +170,10 @@ define [
 			@checkouts = [] if @checkouts is undefined
 			return @
 
-		proxy_urls:->
-			(@proxies v.actions) for v, n in @checkouts
+		proxy_urls: ->
+			for x in @checkouts
+				@proxies x.actions
+				@proxies y.linkTemplates for y in x.formats
 			return @
 
 		# For each checkout, convert any ISO 8601 date strings into a
