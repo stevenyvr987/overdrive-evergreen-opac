@@ -449,6 +449,8 @@ define [
 			#
 		_download_format: ->
 			@on 'click', 'td.formats a', (ev) ->
+				$a = $(@)
+				return unless $a.hasClass 'opac-button'
 				ev.preventDefault()
 
 				# We will return to the current page to handle errors
@@ -460,11 +462,11 @@ define [
 				od.api dl
 				.then(
 					(x) ->
-						window.open(
-							x.links.contentlink.href # url
-							'_blank' #'Overdrive Read format' # title
-							'resizable, scrollbars, status, menubar, toolbar, personalbar' # features
-						)
+						$a
+						.prop 'href', x.links.contentlink.href
+						.text 'Content is ready. Right-click to download in a new tab or window'
+						.removeClass 'opac-button'
+						return
 					-> console.log 'failed to get download link'
 				)
 				.then(
