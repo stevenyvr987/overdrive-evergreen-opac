@@ -430,23 +430,23 @@ define [
 
 			@append inputs
 
-			# We will delegate the handling of download links to the page's
-			# tbody.  The sequence of operation is as follows.  We need to get
-			# from a download link to make the download request, receive a
-			# content link as a response, and then perform a 'normal' get of
-			# the content link.  A complexity is to handle the error responses.
-			#
-			# TODO The initial get could fail, in which case, the errorpageurl
-			# will be used to convey the failure status as a query string. We
-			# will redirect the error page to the current page and we recognize
-			# the error condition by analysing the query parameters.
-			#
-			# TODO Another error condition could occur if an Overdrive Read
-			# ebook is attempted to be downloaded.  Here, the odreadauthurl
-			# will be used as a redirect location. We will also redirect to the
-			# current page and hopefully will be able to discern the state and
-			# show it accordingly.
-			#
+		# We will delegate the handling of download links to the page's
+		# tbody.  The sequence of operation is as follows.  We need to get
+		# from a download link to make the download request, receive a
+		# content link as a response, and then perform a 'normal' get of
+		# the content link.  A complexity is to handle the error responses.
+		#
+		# TODO The initial get could fail, in which case, the errorpageurl
+		# will be used to convey the failure status as a query string. We
+		# will redirect the error page to the current page and we recognize
+		# the error condition by analysing the query parameters.
+		#
+		# TODO Another error condition could occur if an Overdrive Read
+		# ebook is attempted to be downloaded.  Here, the odreadauthurl
+		# will be used as a redirect location. We will also redirect to the
+		# current page and hopefully will be able to discern the state and
+		# show it accordingly.
+		#
 		_download_format: ->
 			@on 'click', 'td.formats a', (ev) ->
 				$a = $(@)
