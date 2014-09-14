@@ -474,7 +474,7 @@ define [
 		_notify: (title, text) ->
 
 			@dialog
-				position: my: 'top', at: 'right top'
+				#position: my: 'top', at: 'right top'
 				minHeight: 0
 				autoOpen: true
 				draggable: false
@@ -484,7 +484,7 @@ define [
 				close: -> $(@).dialog 'destroy'
 				title: title
 
-			.text text
+			.html text
 
 		# Get the title of e-item in a row context
 		_etitle: -> @find('.title a').text()

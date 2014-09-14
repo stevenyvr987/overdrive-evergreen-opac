@@ -380,6 +380,15 @@ require [
 			if id = search_params 'interested'
 				return routes['opac\/place_hold'] id
 
+			# If there is an error message embedded in the search parameters
+			# that resulted from an attempt at downloading content, show it in
+			# a floating notification box.
+			if code = search_params 'ErrorCode'
+				$('<div>')._notify 'Error message', """
+					<p>#{search_params 'ErrorDescription'}</p>
+					<p>Details: #{search_params 'ErrorDetails'}</p>
+					"""
+
 			# Rewrite the text in the warning box to distinguish physical items from e-items
 			unless search_params 'e_items'
 				$('.warning_box').text $('.warning_box').text().replace ' items', ' physical items'
