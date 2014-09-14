@@ -47,10 +47,11 @@ require [
 	# Query a search string of the current page for the value or existence of a
 	# property
 	search_params = (p) ->
-		# Convert for example, '?a=1&b=2' to { a:1, b:2 }, 
+		# Convert for example, '?a=1&b=2' to { a:1, b:2 }. 
+		# Also, convert any pluses to spaces.
 		o =
 			if xs = (decodeURIComponent window.location.search)?.split('?')?[1]?.split(/&|;/)
-				_.zipObject( x.split('=') for x in xs )
+				_.zipObject( x.replace(/\+/g, ' ').split('=') for x in xs )
 			else
 				{}
 		# Return either the value of a specific property, whether the property
