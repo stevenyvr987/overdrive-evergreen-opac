@@ -418,11 +418,9 @@ define [
 					._row_meta() # progress bars
 
 			# Add checkout rows to <tbody> and remove the warning box.
-			# <tbody> also has the responsibility of handling format buttons.
 			if $rows.length > 0
 				@find 'tbody'
 					.empty().append $rows
-					._download_format()
 					.end()
 				.find '.warning_box'
 					.remove()

@@ -52,7 +52,7 @@ define [
 					text: 'No'
 					click: (ev) ->
 						ev.stopPropagation()
-						$(@).dialogAction 'non_action'
+						$(@).dialogAction 'autoclose'
 						return
 				}
 			]
@@ -77,7 +77,8 @@ define [
 			@_super()
 
 			# On creation, dialog message may be overidden by the intent scenario
-			@set_message 'intent', false if intent
+			f = @options._scenario.intent?.body
+			@set_message 'intent', not intent, if $.isFunction f then f @options._action?._name else undefined
 
 			@_on 'dialogactionclose': -> @_destroy()
 
@@ -96,8 +97,8 @@ define [
 			@option 'title', title or s?.title or @options._action._of._etitle()
 			return @
 
-		non_action: ->
-			@_on 'dialogactionclose': reroute if reroute = @options._scenario?.intent?.reroute
+		autoclose: ->
+			@_on 'dialogactionclose': @options._scenario?.intent?.reroute or ->
 			@close()
 			return @
 
@@ -107,6 +108,13 @@ define [
 			# At this point, dialog buttons are turned off.
 			@option 'buttons', []
 
+			# Define functions to close dialogue box and reroute to another window
+			onclose_maybe_reroute = =>
+				@_on 'dialogactionclose': @options._scenario?.done?.reroute or ->
+			close = =>
+				onclose_maybe_reroute()
+				@close()
+
 			# Make an API call
 			action = @options._action
 			progress = => @set_message 'progress', true
@@ -114,22 +122,23 @@ define [
 
 			# Re-use the dialog to show notifications with a close button
 			.then(
-				(x) => @set_message 'done', true
+				(x) =>
+					f = @options._scenario.done?.body
+					@set_message 'done', true, if $.isFunction f then f x else undefined
+					window.setTimeout close, @options._scenario.done?.timeout or 2000
 				(x) => @set_message 'fail', true, responseMessage x
 			)
 
 			# On done and when the user closes the dialog, reroute the page
-			.done =>
-				@_on 'dialogactionclose': reroute if reroute = this.options._scenario?.done?.reroute
+			.done onclose_maybe_reroute
 
 			return @
 
-		# Show or hide the dialog close button
-		_close_button: (close) ->
-			@element.parent()
-				.find('.ui-dialog-titlebar-close')[if close then 'show' else 'hide']()
-				.end()
-			.end()
+		# Show and focus, or hide, the dialog close button.
+		_close_button: (show) ->
+			$button = @element.parent().find('.ui-dialog-titlebar-close')
+			if show then $button.show().focus() else $button.hide()
+			return @
 
 
 	# Map action names to labels
@@ -150,14 +159,6 @@ define [
 	# the action dialog widget.  The specification is dependent on the content
 	# of a given action object and hence the scenario object must be built
 	# dynamically.
-	#
-	# TODO Since all of these extensions end with making an identical call to
-	# the dialogAction widget, it would be good to abstract the call to the
-	# outside environment, perhaps redefine the extensions as simple functions.
-	# eg, fn:: action -> scenario
-	#
-	# TODO Map action names to re-routed page names.  The rerouting function
-	# depends on current page, current action, and current scenario
 	#
 	$.fn.extend
 
@@ -252,40 +253,25 @@ define [
 
 			@dialogAction _scenario: scenario, _action: action
 
-		# Build format buttons given specifications as follows.
-		# formats = [ { formatType: type, linkTemplates: { downloadLink: { href: href } } } ]
-		# actions = { downloadLink: { href: href, method: get, type: type } }
-		#
-		# TODO no need to define an action dialog because this is the only example of a get action
-		# and we can allow the default behaviour to occur.
-		#
-		# Do we need a dialogDownload widget?
-		# Confirm -> HTTP GET downloadLink.
-		# Fail -> Browser navigates to errorURL and shows error status.
-		# Done -> Response is a contentLink. HTTP Get contentLink.
-			
-		_formats: (formats) ->
-			return @ unless formats
+		_downloadLink: (action) ->
 
-			tpl = _.template """
-			<div>
-				<a href="<%= href %>" class="opac-button" style="margin-top: 0px; margin-bottom: 0px"><%= label %></a>
-			</div>
-			"""
+			scenario =
+				intent: body: (formatType) ->
+					if formatType is 'ebook-overdrive'
+						'Download content to read in the browser?'
+					else
+						'Download content for an e-book reader?'
+				done:
+					body: (x) ->
+						$ """
+						<div>Content is ready.</div>
+						<a href=#{x.links.contentlink.href}>Right-click to download in a new tab or window.</a>
+						<div>The link is valid for the next 60 seconds.</div>
+						"""
+					timeout: 59000
+				fail: body: 'could not download'
 
-			$buttons = for format in formats
-				{
-					formatType: n
-					linkTemplates:
-						downloadLink:
-							href: href
-							type: type
-				} = format
-
-				# Create a button for this action
-				$ tpl href: href, label: "Download #{od.labels n}"
-
-			@empty().append $buttons
+			@dialogAction _scenario: scenario, _action: action
 
 		# Build action buttons and dialogs given specifications as follows.
 		# actions = [ { name: { href: h, method: m, fields: [ { name: n, value: v, options: [...] } ] } ]
@@ -312,8 +298,6 @@ define [
 				.on 'click', action, (ev) ->
 					ev.preventDefault()
 					$('<div>')['_' + ev.data._name] ev.data
-					# TODO apply dialogAction method directly as follows.
-					#$('<div>').dialogAction _scenario: Actions.scenario[ev.data._name], _action: ev.data
 					return false
 
 			@empty().append $buttons
@@ -430,11 +414,12 @@ define [
 
 			@append inputs
 
-		# We will delegate the handling of download links to the page's
-		# tbody.  The sequence of operation is as follows.  We need to get
-		# from a download link to make the download request, receive a
-		# content link as a response, and then perform a 'normal' get of
-		# the content link.  A complexity is to handle the error responses.
+		# Build format buttons given specifications as follows.
+		# formats = [ { formatType: type, linkTemplates: { downloadLink: { href: href } } } ]
+		#
+		# We need to get from a download link to make the download request,
+		# receive a content link as a response, and then perform a 'normal' get
+		# of the content link.  A complexity is to handle the error responses.
 		#
 		# TODO The initial get could fail, in which case, the errorpageurl
 		# will be used to convey the failure status as a query string. We
@@ -446,35 +431,44 @@ define [
 		# will be used as a redirect location. We will also redirect to the
 		# current page and hopefully will be able to discern the state and
 		# show it accordingly.
-		#
-		_download_format: ->
-			@on 'click', 'td.formats a', (ev) ->
-				$a = $(@)
-				return unless $a.hasClass 'opac-button'
-				ev.preventDefault()
+		_formats: (formats, id) ->
+			return @ unless formats
 
-				# We will return to the current page to handle errors
+			tpl = _.template """
+			<div>
+				<a href="<%= href %>" class="opac-button" style="margin-top: 0px; margin-bottom: 0px"><%= label %></a>
+			</div>
+			"""
+
+			$tr = @closest('tr')
+
+			$buttons = for format in formats
+				{
+					formatType: n
+					linkTemplates:
+						downloadLink:
+							href: href
+							type: type
+				} = format
+
 				x = encodeURIComponent window.location.href
-				dl = @href
+				href = href
 					.replace /\{errorpageurl\}/, x
 					.replace /\{odreadauthurl\}/, x
 
-				od.api dl
-				.then(
-					(x) ->
-						$a
-						.prop 'href', x.links.contentlink.href
-						.text 'Content is ready. Right-click to download in a new tab or window'
-						.removeClass 'opac-button'
-						return
-					-> console.log 'failed to get download link'
-				)
-				.then(
-					-> # not expected to arrive here ever
-					-> console.log 'failed to get contentLink'
-				)
-				
-				return
+				action = format.linkTemplates.downloadLink
+				$.extend action, _of: $tr, _name: n, _id: id, href: href
+
+				# Create a button for this action
+				$ tpl href: href, label: "Download #{od.labels n}"
+
+				# On clicking the button, build a new dialog using the extended action object
+				.on 'click', action, (ev) ->
+					ev.preventDefault()
+					$('<div>')['_downloadLink'] ev.data
+					return false
+
+			@empty().append $buttons
 
 
 		_notify: (title, text) ->
