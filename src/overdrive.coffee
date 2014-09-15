@@ -383,10 +383,17 @@ require [
 			# If there is an error message embedded in the search parameters
 			# that resulted from an attempt at downloading content, show it in
 			# a floating notification box.
-			if code = search_params 'ErrorCode'
+			if code = search_params 'read_error'
+				$('<div>')._notify 'Error message', """
+					<p>Could not get content</p>
+					<div>Error code: #{code}</div>
+					<div>Reserve ID: #{search_params 'reserveid'}</div>
+					"""
+			else if code = search_params 'ErrorCode'
 				$('<div>')._notify 'Error message', """
 					<p>#{search_params 'ErrorDescription'}</p>
-					<p>Details: #{search_params 'ErrorDetails'}</p>
+					<div>Error code: #{code}</div>
+					<div>Details: #{search_params 'ErrorDetails'}</div>
 					"""
 
 			# Rewrite the text in the warning box to distinguish physical items from e-items

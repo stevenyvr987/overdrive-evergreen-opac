@@ -451,10 +451,9 @@ define [
 							type: type
 				} = format
 
-				x = encodeURIComponent window.location.href
 				href = href
-					.replace /\{errorpageurl\}/, x
-					.replace /\{odreadauthurl\}/, x
+					.replace /\{errorpageurl\}/, encodeURIComponent window.location.href
+					.replace /\{odreadauthurl\}/, encodeURIComponent "#{window.location.href}&reserveid=[RESERVE_ID]&read_error=[READ_ERROR]"
 
 				action = format.linkTemplates.downloadLink
 				$.extend action, _of: $tr, _name: n, _id: id, href: href
