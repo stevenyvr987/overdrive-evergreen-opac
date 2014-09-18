@@ -23,25 +23,29 @@ define [
 		_dashboard: (x) ->
 
 			if arguments.length is 0
+				@append $('<div id="dashboard">')
 
+			else
 				# Add a new dashboard for to show counts of e-items; start with
 				# zero counts
 				base = '/eg/opac/myopac'
-				@append """
-	<div id="dashboard">
-		<span class="dash-align">
-			<a class="dash-link" href="#{base}/circs?e_items"><span class="ncheckouts" id="dash_checked">0</span> E-items Checked Out</a>
-		</span>
-		<span class="dash_divider">|</span>
-		<span class="dash-align">
-			<a class="dash-link" href="#{base}/holds?e_items"><span class="nholds" id="dash_holds">0</span> E-items on Hold</a>
-		</span>
-		<span class="dash_divider">|</span>
-		<span class="dash-align">
-			<a class="dash-link" href="#{base}/holds?e_items&available=1"><span class="nholdsready" id="dash_pickup">0</span> E-items Ready for Checkout</a>
-		</span>
-	</div>
-				"""
+				@find 'div'
+					.eq 2
+					.append """
+					<span class="dash-align">
+						<a class="dash-link" href="#{base}/circs?e_items"><span class="ncheckouts" id="dash_checked">0</span> E-items Checked Out</a>
+					</span>
+					<span class="dash_divider">|</span>
+					<span class="dash-align">
+						<a class="dash-link" href="#{base}/holds?e_items"><span class="nholds" id="dash_holds">0</span> E-items on Hold</a>
+					</span>
+					<span class="dash_divider">|</span>
+					<span class="dash-align">
+						<a class="dash-link" href="#{base}/holds?e_items&available=1"><span class="nholdsready" id="dash_pickup">0</span> E-items Ready for Checkout</a>
+					</span>
+					"""
+					.end()
+					.end()
 
 				# The following sequence is necessary to align the new dashboard
 				# with the existing ones, but do not know why it needs to be done
@@ -49,24 +53,24 @@ define [
 					.css float: 'none'
 					.end()
 
-			else
 				@_counters x # Change the values of the counters
+
 			return @
 
 		# Replace account summary area with one that shows links to go to
-		# e-items lists
+		# physical and e-items lists
 		_account_summary: (x) ->
 
 			if arguments.length is 0
 				# Parse a list of totals of physical items from the account summary table
 				totals = ( +(v.textContent.match(/\d+?/)[0]) for v in @find('td').not '[align="right"]' )
 
-				tpl = """
+				tpl = _.template """
 				<tbody>
 					<tr>
 						<td>
 							<a href="/eg/opac/myopac/circs">
-								<span><span class="ncheckouts" /> Items Currently Checked out</span>
+								<span><span class="ncheckouts" /> <%= ncheckouts %> Items Currently Checked out</span>
 							</a>
 						</td>
 						<td align="right">
@@ -75,7 +79,7 @@ define [
 					</tr>
 					<tr>
 						<td>
-							<a href="/eg/opac/myopac/holds"><span class="nholds" /> Items Currently on Hold</a>
+							<a href="/eg/opac/myopac/holds"><span class="nholds" /> <%= nholds %> Items Currently on Hold</a>
 						</td>
 						<td align="right">
 							<a href="/eg/opac/myopac/holds?e_items"><span class="n_holds" /> E-items Currently on Hold</a>
@@ -83,7 +87,7 @@ define [
 					</tr>
 					<tr>
 						<td>
-							<a href="/eg/opac/myopac/holds?available=1"><span class="nready" /> Items ready for pickup</a>
+							<a href="/eg/opac/myopac/holds?available=1"><span class="nready" /> <%= nready %> Items ready for pickup</a>
 						</td>
 						<td align="right">
 							<a href="/eg/opac/myopac/holds?e_items&available=1"><span class="n_ready" /> E-items ready for pickup</a>
@@ -91,11 +95,32 @@ define [
 					</tr>
 				</tbody>
 				"""
-				@empty().append tpl
-				return totals
+
+				# Build a new table consisting of two columns.  The first
+				# column is for physical items with the existing totals.  The
+				# second column is for e-items and is initially hidden until
+				# its total values are available.
+				@empty()
+				.append tpl
+					ncheckouts:  totals[0]
+					nholds:	     totals[1]
+					nready:	     totals[2]
+				.find 'td'
+					.filter '[align="right"]'
+					.find 'a'
+						.hide()
+						.end()
+					.end()
 
 			else
-				@_counters x # Change the values of the counters
+				# Change the values of the counters and reveal the e-items column
+				@_counters x
+				.find 'td'
+					.filter '[align="right"]'
+					.find 'a'
+						.show()
+						.end()
+					.end()
 
 		# Relabel a history tab
 		_tab_history: ->

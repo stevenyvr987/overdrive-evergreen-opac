@@ -147,14 +147,11 @@ require [
 		'myopac\/main': ( $table = $('.acct_sum_table') ) ->
 			return unless $table.length
 
-			totals = $table._account_summary()
+			$table._account_summary()
 			
 			od.$.on 'od.interests', (ev, x) ->
 
 				$table._account_summary
-					ncheckouts:  totals[0]
-					nholds:	     totals[1]
-					nready:	     totals[2]
 					n_checkouts: x.nCheckouts
 					n_holds:     x.nHolds
 					n_ready:     x.nHoldsReady
