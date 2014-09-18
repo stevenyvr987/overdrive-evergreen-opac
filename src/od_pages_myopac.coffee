@@ -310,13 +310,13 @@ define [
 			return @ unless meta
 
 			$title = $ """
-			<a href="/eg/opac/results?query=#{meta.title};locg=10;qtype=title">#{meta.title}</a>
+			<a href="/eg/opac/results?query=#{meta.title};qtype=title">#{meta.title}</a>
 			"""
 			$thumbnail = $ """
 			<img src="#{meta.images?.thumbnail?.href}" alt="#{meta.title}" />
 			"""
 			$author = $ """
-			<a href="/eg/opac/results?query=#{meta.author};locg=10;qtype=author">#{meta.author}</a>
+			<a href="/eg/opac/results?query=#{meta.author};qtype=author">#{meta.author}</a>
 			"""
 			for n in classnames
 				$n = @find ".#{n}"
