@@ -49,7 +49,9 @@ define [
 		'od.logout'
 		'od.error'
 	]
-	eventObject = $({}).on eventList.join(' '), (e, x, y...) -> log e.namespace, x, y
+	eventObject = $({}).on eventList.join(' '), (e, x, y...) ->
+		# Uncomment for debugging on console
+		#log e.namespace, x, y
 
 	# On page load, we unserialize the text string found in local storage into
 	# an object, or if there is no string yet, we create the default object.
